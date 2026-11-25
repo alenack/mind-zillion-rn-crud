@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   SafeAreaView,
   View,
@@ -9,26 +9,29 @@ import {
   StyleSheet,
 } from "react-native";
 
+const API_URL = "http://localhost:5268/api/employees";
+
 type Employee = {
-  id: number;
+  employeeId: number;
   firstName: string;
-  middleName: string;
+  middleName?: string | null;
   lastName: string;
-  mobileNumber: string;
-  email: string;
+  mobileNumber?: string | null;
+  email?: string | null;
+};
+
+type EmployeePayload = {
+  firstName: string;
+  middleName: string | null;
+  lastName: string;
+  mobileNumber: string | null;
+  email: string | null;
 };
 
 export default function App() {
-  const [employees, setEmployees] = useState<Employee[]>([
-    {
-      id: 1,
-      firstName: "Riddhi",
-      middleName: "Anil",
-      lastName: "Chavan",
-      mobileNumber: "9876543210",
-      email: "riddhi@example.com",
-    },
-  ]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -38,6 +41,28 @@ export default function App() {
   const [email, setEmail] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+
+  async function fetchEmployees() {
+    try {
+      setErrorMessage("");
+      const response = await fetch(API_URL);
+      if (!response.ok) {
+        throw new Error(`Failed to load employees (${response.status})`);
+      }
+      const data: Employee[] = await response.json();
+      setEmployees(data);
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error ? err.message : "Could not connect to the API."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
 
   function resetForm() {
     setFirstName("");
@@ -49,71 +74,113 @@ export default function App() {
     setErrorMessage("");
   }
 
-  function addEmployee(newRecord: Omit<Employee, "id">) {
-    const created: Employee = { id: Date.now(), ...newRecord };
+  async function addEmployee(payload: EmployeePayload) {
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to add employee (${response.status})`);
+    }
+    const created: Employee = await response.json();
     setEmployees((prev) => [...prev, created]);
   }
 
-  function updateEmployee(id: number, updatedRecord: Omit<Employee, "id">) {
+  async function updateEmployee(id: number, payload: EmployeePayload) {
+    const response = await fetch(`${API_URL}/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ employeeId: id, ...payload }),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to update employee (${response.status})`);
+    }
     setEmployees((prev) =>
-      prev.map((emp) => (emp.id === id ? { ...emp, ...updatedRecord } : emp))
+      prev.map((emp) => (emp.employeeId === id ? { ...emp, ...payload } : emp))
     );
   }
 
-  function deleteEmployee(id: number) {
-    setEmployees((prev) => prev.filter((emp) => emp.id !== id));
-    if (editingId === id) {
-      resetForm();
+  async function deleteEmployee(id: number) {
+    try {
+      setErrorMessage("");
+      const response = await fetch(`${API_URL}/${id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to delete employee (${response.status})`);
+      }
+      setEmployees((prev) => prev.filter((emp) => emp.employeeId !== id));
+      if (editingId === id) {
+        resetForm();
+      }
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error ? err.message : "Could not delete employee."
+      );
     }
   }
 
   function handleStartEdit(emp: Employee) {
-    setEditingId(emp.id);
+    setEditingId(emp.employeeId);
     setFirstName(emp.firstName);
-    setMiddleName(emp.middleName);
+    setMiddleName(emp.middleName ?? "");
     setLastName(emp.lastName);
-    setMobileNumber(emp.mobileNumber);
-    setEmail(emp.email);
+    setMobileNumber(emp.mobileNumber ?? "");
+    setEmail(emp.email ?? "");
     setErrorMessage("");
   }
 
-  function handleSaveEmployee() {
+  async function handleSaveEmployee() {
     if (!firstName.trim() || !lastName.trim()) {
       setErrorMessage("First Name and Last Name are required.");
       return;
     }
 
-    const payload = {
+    const payload: EmployeePayload = {
       firstName: firstName.trim(),
-      middleName: middleName.trim(),
+      middleName: middleName.trim() ? middleName.trim() : null,
       lastName: lastName.trim(),
-      mobileNumber: mobileNumber.trim(),
-      email: email.trim(),
+      mobileNumber: mobileNumber.trim() ? mobileNumber.trim() : null,
+      email: email.trim() ? email.trim() : null,
     };
 
-    if (editingId !== null) {
-      updateEmployee(editingId, payload);
-    } else {
-      addEmployee(payload);
-    }
+    try {
+      setSubmitting(true);
+      setErrorMessage("");
 
-    resetForm();
+      if (editingId !== null) {
+        await updateEmployee(editingId, payload);
+      } else {
+        await addEmployee(payload);
+      }
+
+      resetForm();
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error ? err.message : "Failed to save employee."
+      );
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const filteredEmployees = employees.filter((emp) => {
     const q = searchQuery.toLowerCase();
-    const fullName = `${emp.firstName} ${emp.middleName} ${emp.lastName}`.toLowerCase();
+    const fullName = `${emp.firstName} ${emp.middleName ?? ""} ${emp.lastName}`.toLowerCase();
     return (
       fullName.includes(q) ||
-      emp.email.toLowerCase().includes(q) ||
-      emp.mobileNumber.includes(q)
+      (emp.email ?? "").toLowerCase().includes(q) ||
+      (emp.mobileNumber ?? "").includes(q)
     );
   });
 
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Employee Management System</Text>
-      <Text style={styles.subtitle}>Employees({filteredEmployees.length})</Text>
+      <Text style={styles.subtitle}>
+        {loading ? "Loading..." : `Employees(${filteredEmployees.length})`}
+      </Text>
 
       <TextInput
         style={styles.input}
@@ -163,9 +230,17 @@ export default function App() {
         />
 
         <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.saveButton} onPress={handleSaveEmployee}>
+          <TouchableOpacity
+            style={[styles.saveButton, submitting && styles.disabledButton]}
+            onPress={handleSaveEmployee}
+            disabled={submitting}
+          >
             <Text style={styles.buttonText}>
-              {editingId !== null ? "Update" : "Save"}
+              {submitting
+                ? "Saving..."
+                : editingId !== null
+                ? "Update"
+                : "Save"}
             </Text>
           </TouchableOpacity>
 
@@ -179,12 +254,12 @@ export default function App() {
 
       <FlatList
         data={filteredEmployees}
-        keyExtractor={(item) => String(item.id)}
+        keyExtractor={(item) => String(item.employeeId)}
         renderItem={({ item }) => (
           <View style={styles.rowCard}>
             <View style={{ flex: 1 }}>
               <Text style={styles.empName}>
-                {item.firstName} {item.middleName} {item.lastName}
+                {item.firstName} {item.middleName ?? ""} {item.lastName}
               </Text>
               <Text style={styles.empDetail}>{item.mobileNumber || "No phone"}</Text>
               <Text style={styles.empDetail}>{item.email || "No email"}</Text>
@@ -198,7 +273,7 @@ export default function App() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.deleteButton}
-                onPress={() => deleteEmployee(item.id)}
+                onPress={() => deleteEmployee(item.employeeId)}
               >
                 <Text style={styles.buttonText}>Delete</Text>
               </TouchableOpacity>
@@ -240,6 +315,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 6,
   },
+  disabledButton: { opacity: 0.6 },
   cancelButton: {
     backgroundColor: "#e2e8f0",
     paddingVertical: 10,
