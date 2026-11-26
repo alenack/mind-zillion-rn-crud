@@ -1,6 +1,6 @@
 export const API_ENDPOINTS = {
-  BASE_URL: "http://localhost:5268",
-  EMPLOYEES: "http://localhost:5268/api/employees",
+  BASE_URL: "http://192.168.29.120:5268",
+  EMPLOYEES: "http://192.168.29.120:5268/api/employees",
 } as const;
 
 export const FONT_SIZES = {
@@ -50,6 +50,14 @@ export const CONTROLS = {
     KEY: "searchEmployeeInput",
     PLACEHOLDER: "Search by name, email, or phone...",
   },
+  CLEAR_SEARCH_BUTTON: {
+    KEY: "clearSearchButton",
+    LABEL: "Clear",
+  },
+  ADD_EMPLOYEE_BUTTON: {
+    KEY: "addEmployeeButton",
+    LABEL: "+ Add Employee",
+  },
   FIRST_NAME_INPUT: {
     KEY: "firstNameInput",
     PLACEHOLDER: "First Name *",
@@ -92,13 +100,28 @@ export const CONTROLS = {
 
 export const UI_TEXT = {
   APP_TITLE: "Employee Management System",
+  LIST_SUBTITLE: "Manage and search your team directory",
+  ADD_SUBTITLE: "Fill in details to register a new employee",
+  EDIT_SUBTITLE: "Update existing employee details",
+  EMPLOYEES_SECTION_HEADING: "Employees",
   LOADING: "Loading...",
+  LOADING_EMPLOYEES: "Loading employees...",
   EMPLOYEE_COUNT_PREFIX: "Employees",
   ADD_HEADING: "+ Add Employee",
   EDIT_HEADING: "Edit Employee",
+  EMPTY_SEARCH_TITLE: "No matching employees",
+  EMPTY_SEARCH_SUBTITLE: "Try a different name, phone number, or email.",
+  EMPTY_LIST_TITLE: "No employees yet",
+  EMPTY_LIST_SUBTITLE: "Use + Add Employee above to create your first record.",
+  DELETE_CONFIRM_TITLE: "Delete Employee",
+  DELETE_CONFIRM_MESSAGE: "Are you sure you want to delete this record?",
   REQUIRED_NAME_ERROR: "First Name and Last Name are required.",
   INVALID_MOBILE_ERROR: "Mobile number must be 10 digits.",
   INVALID_EMAIL_ERROR: "Please enter a valid email address.",
+  API_CONNECT_ERROR: "Could not connect to the API.",
+  SAVE_ERROR: "Failed to save employee.",
+  DELETE_ERROR: "Could not delete employee.",
   NO_PHONE: "No phone",
   NO_EMAIL: "No email",
+  AVATAR_FALLBACK: "E",
 } as const;
